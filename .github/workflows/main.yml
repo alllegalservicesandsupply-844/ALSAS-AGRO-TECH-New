@@ -18,10 +18,11 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'
-
+          java-version:'17'- name:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version:'latestuses: android-actions/setup-android@v3
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses
       - name: Install Gradle
