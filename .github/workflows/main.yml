@@ -1,3 +1,4 @@
+
 name: ALSAS AGRO TECH Android Build
 
 on:
@@ -11,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Get source code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Java
@@ -19,36 +20,27 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          cmdline-tools-version:'latestuses: android-actions/setup-android@v3
+          packages: platform-tools platform;android-35 build-tools;35.0.0
+
       - name: Accept Android SDK licenses
         run: yes | sdkmanager --licenses
-      - name: Install Gradle
+
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
       - name: Extract Android project
-        shell: bash
         run: |
-          set -euo pipefail
-          mkdir -p source
-          ZIP_FILE="$(find . -maxdepth 3 -type f -iname '*.zip' -not -path './source/*' | head -n 1)"
-          if [ -z "$ZIP_FILE" ]; then
-            echo "No source ZIP file found in the repository."
-            exit 1
-          fi
-          unzip -q "$ZIP_FILE" -d source
-          PROJECT_DIR="$(find source -name settings.gradle.kts -printf '%h\n' | head -n 1)"
-          if [ -z "$PROJECT_DIR" ]; then
-            echo "Android project not found inside the ZIP (settings.gradle.kts missing)."
-            exit 1
-          fi
+          unzip -q ALSAS_AGRO_TECH_Source.zip -d source
+          PROJECT_DIR=$(find source -name settings.gradle.kts -print -quit | xargs dirname)
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-      - name: Build debug APK
+      - name: Build Debug APK
         run: |
           cd "$PROJECT_DIR"
           gradle --no-daemon assembleDebug
