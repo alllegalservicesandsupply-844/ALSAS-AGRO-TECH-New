@@ -36,7 +36,7 @@ jobs:
 
       - name: Extract Android project
         run: |
-          unzip -q ALSAS_AGRO_TECH_Source_JVM17.zip -d source
+          unzip -q ALSAS_AGRO_TECH_Source_JVM17_Fixed.zip -d source
           PROJECT_DIR=$(find source -name settings.gradle.kts -print -quit | xargs dirname)
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
