@@ -40,10 +40,26 @@ jobs:
           PROJECT_DIR=$(find source -name settings.gradle.kts -print -quit | xargs dirname)
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
+      - name: Configure JVM target 17
+        run: |
+          cat > "$RUNNER_TEMP/target17.gradle" <<'EOF'
+          allprojects {
+              tasks.withType(org.gradle.api.tasks.compile.JavaCompile).configureEach {
+                  sourceCompatibility = '17'
+                  targetCompatibility = '17'
+              }
+              tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+                  kotlinOptions.jvmTarget = '17'
+              }
+          }
+          EOF
+
       - name: Build Debug APK
         run: |
           cd "$PROJECT_DIR"
-          gradle --no-daemon assembleDebug
+          gradle --no-daemon \
+            --init-script "$RUNNER_TEMP/target17.gradle" \
+            assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
