@@ -1,4 +1,4 @@
-name: ALSAS AGRO TECH - Build Fixed ZIP
+name: ALSAS AGRO TECH - Build Fixed APK
 
 on:
   workflow_dispatch:
@@ -9,6 +9,7 @@ permissions:
 jobs:
   android:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -19,54 +20,78 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Gradle 8.9
-        uses: gradle/actions/setup-gradle@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          gradle-version: '8.9'
+          python-version: '3.x'
 
-      - name: Find and extract fixed source ZIP
+      - name: Extract fixed source ZIP
         shell: bash
         run: |
           set -euo pipefail
-          ZIP_FILE="$(find . -type f -name 'ALSAS_AGRO_TECH_v0.9.7_FIXED_SOURCE.zip' -print -quit)"
+
+          ZIP_FILE="$(find . -type f \
+            -name 'ALSAS_AGRO_TECH_v0.9.7_FIXED_SOURCE.zip' \
+            -print -quit)"
+
           if [[ -z "$ZIP_FILE" ]]; then
-            echo "Fixed source ZIP not found in repository. Upload ALSAS_AGRO_TECH_v0.9.7_FIXED_SOURCE.zip first."
+            echo "ERROR: Fixed source ZIP not found."
             exit 1
           fi
+
           mkdir -p extracted
           unzip -q "$ZIP_FILE" -d extracted
-          PROJECT_DIR="$(find extracted -type f -name 'settings.gradle.kts' -printf '%h\n' -quit)"
+
+          PROJECT_DIR="$(find extracted -type f \
+            -name 'settings.gradle.kts' \
+            -printf '%h\n' -quit)"
+
           if [[ -z "$PROJECT_DIR" ]]; then
-            echo "Could not find settings.gradle.kts inside ZIP."
+            echo "ERROR: Project root not found."
             exit 1
           fi
+
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
           echo "Project root: $PROJECT_DIR"
+          ls -la "$PROJECT_DIR"
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK Platform 35
-        run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager --licenses
+          sdkmanager --install \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
 
-      - name: Verify migration regression
-      
+      - name: Verify project files
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          test -f settings.gradle.kts
+          test -f app/build.gradle.kts
+          test -f tools/verify_migrations.py
+          test -f gradlew
+
+      - name: Verify database migrations
         working-directory: ${{ env.PROJECT_DIR }}
         run: python tools/verify_migrations.py
 
       - name: Run JVM unit tests
-      
         working-directory: ${{ env.PROJECT_DIR }}
-        run: gradle --no-daemon --stacktrace :app:testDebugUnitTest
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --stacktrace :app:testDebugUnitTest
 
       - name: Build debug APK
         working-directory: ${{ env.PROJECT_DIR }}
-        run: gradle --no-daemon --stacktrace :app:assembleDebug
+        run: |
+          ./gradlew --no-daemon --stacktrace :app:assembleDebug
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: ALSAS-AGRO-TECH-debug-APK
-          path: extracted/**/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-
